@@ -2,10 +2,10 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
-from .models import Content
-from .serializers import ContentSerializer
 from django.db.models import Q
 from rest_framework.pagination import PageNumberPagination
+from .models import Content
+from .serializers import ContentSerializer
 
 
 class ContentListCreateView(APIView):
@@ -19,7 +19,7 @@ class ContentListCreateView(APIView):
 
     def get(self, request):
         paginator = PageNumberPagination()
-        paginator.page_size = 10  # Default page size (can be adjusted globally)
+        paginator.page_size = 10  # Default page size (adjustable globally)
 
         # Admin sees all content; authors see their own
         if request.user.is_staff:
@@ -43,9 +43,14 @@ class ContentListCreateView(APIView):
         return paginator.get_paginated_response(serializer.data)
 
     def post(self, request):
-        # Allow authors to create content
+        """
+        Handles creating new content. Ensures that only PDF files are uploaded.
+        """
         serializer = ContentSerializer(data=request.data)
         if serializer.is_valid():
+            document = request.data.get('document')
+            if document and not document.name.endswith('.pdf'):
+                return Response({"document": ["Only PDF files are allowed."]}, status=status.HTTP_400_BAD_REQUEST)
             serializer.save(author=request.user)  # Automatically assign the logged-in user as the author
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -60,6 +65,9 @@ class ContentDetailView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get_object(self, pk, user):
+        """
+        Retrieve the content object if it exists and the user has access.
+        """
         try:
             content = Content.objects.get(pk=pk)
             # Admin can access all; authors can only access their own content
@@ -70,6 +78,9 @@ class ContentDetailView(APIView):
             return None
 
     def get(self, request, pk):
+        """
+        Retrieve a single content item by ID.
+        """
         content = self.get_object(pk, request.user)
         if not content:
             return Response({"detail": "Not found or unauthorized."}, status=status.HTTP_404_NOT_FOUND)
@@ -77,16 +88,26 @@ class ContentDetailView(APIView):
         return Response(serializer.data)
 
     def put(self, request, pk):
+        """
+        Update a content item by ID. Only PDF files are allowed for the document field.
+        """
         content = self.get_object(pk, request.user)
         if not content:
             return Response({"detail": "Not found or unauthorized."}, status=status.HTTP_404_NOT_FOUND)
+
         serializer = ContentSerializer(content, data=request.data, partial=True)
         if serializer.is_valid():
+            document = request.data.get('document')
+            if document and not document.name.endswith('.pdf'):
+                return Response({"document": ["Only PDF files are allowed."]}, status=status.HTTP_400_BAD_REQUEST)
             serializer.save()
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request, pk):
+        """
+        Delete a content item by ID.
+        """
         content = self.get_object(pk, request.user)
         if not content:
             return Response({"detail": "Not found or unauthorized."}, status=status.HTTP_404_NOT_FOUND)
