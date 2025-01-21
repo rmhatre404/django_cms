@@ -12,4 +12,4 @@ This project is a Content Management System (CMS) backend implemented using Djan
 ## Installation
 1. Clone the repository:
    ```bash
-   git clone <(https://github.com/rmhatre404/django_cms)>
+   git clone (https://github.com/rmhatre404/django_cms)
