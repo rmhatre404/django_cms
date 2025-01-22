@@ -4,6 +4,7 @@ from rest_framework import status
 from users.models import User
 from users.serializers import UserSerializer
 from rest_framework_simplejwt.tokens import RefreshToken
+from django.core.exceptions import ValidationError
 
 
 class AuthorRegistrationView(APIView):
@@ -22,10 +23,21 @@ class AuthorRegistrationView(APIView):
         serializer = UserSerializer(data=data)
 
         if serializer.is_valid():
+            try:
+                # Validate password separately
+                password = data.get('password')
+                if not password:
+                    return Response({"password": ["This field is required."]}, status=status.HTTP_400_BAD_REQUEST)
+
+                # Use the custom password validator
+                serializer.validate_password(password)
+            except ValidationError as e:
+                return Response({"password": e.messages}, status=status.HTTP_400_BAD_REQUEST)
+
             # Save the user instance but do not commit to the database yet
             user = serializer.save()
             # Hash the password before saving the user
-            user.set_password(data['password'])
+            user.set_password(password)
             user.save()
 
             return Response(serializer.data, status=status.HTTP_201_CREATED)
@@ -45,15 +57,19 @@ class LoginView(APIView):
         email = request.data.get('email')
         password = request.data.get('password')
 
+        print("Login Attempt:", email, password)  # Debugging
+
         try:
             # Retrieve the user by email
             user = User.objects.get(email=email)
+            print("Found User:", user.email, user.password)  # Debugging
         except User.DoesNotExist:
             # Return an error if the user is not found
             return Response({"detail": "User not found"}, status=status.HTTP_404_NOT_FOUND)
 
         # Check if the provided password matches the hashed password in the database
         if not user.check_password(password):
+            print("Password Check Failed")  # Debugging
             return Response({"detail": "Incorrect password"}, status=status.HTTP_401_UNAUTHORIZED)
 
         # Generate JWT tokens for the authenticated user
