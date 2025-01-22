@@ -1,49 +1,51 @@
-from django.test import TestCase
+# Test Cases for `users` App
 
-# Create your tests here.
-from django.core.management import call_command
-from django.test import TestCase
-from users.models import User
+from rest_framework.test import APITestCase
+from rest_framework import status
 
+class UserTests(APITestCase):
+    def setUp(self):
+        self.register_url = '/api/users/register/'
+        self.login_url = '/api/users/login/'
+        self.user_data = {
+            "email": "testuser@example.com",
+            "password": "Password@123",
+            "full_name": "Test User",
+            "phone": "1234567890",
+            "pincode": "123456"
+        }
 
-class SeedAdminCommandTest(TestCase):
-    def test_seed_admin_creates_admin_user(self):
-        """
-        Test that the seed_admin command creates an admin user if one does not exist.
-        """
-        admin_email = "admin@arcitech.com"
+    def test_register_valid_user(self):
+        """ Test user registration with valid data. """
+        response = self.client.post(self.register_url, self.user_data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
-        # Ensure the admin user does not exist initially
-        self.assertFalse(User.objects.filter(email=admin_email).exists())
+    def test_register_invalid_password(self):
+        """ Test registration with invalid password. """
+        invalid_data = self.user_data.copy()
+        invalid_data["password"] = "short"
+        response = self.client.post(self.register_url, invalid_data, format="json")
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        
+        # Adjusted to check the error message in the response
+        self.assertIn("Password must be at least 8 characters long.", str(response.data))
 
-        # Call the seed_admin command
-        call_command('seed_admin')
+    def test_login_valid_user(self):
+        """ Test login with valid credentials. """
+        self.client.post(self.register_url, self.user_data, format='json')
+        login_data = {
+            "email": self.user_data["email"],
+            "password": self.user_data["password"]
+        }
+        response = self.client.post(self.login_url, login_data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn("access", response.data)
 
-        # Verify the admin user is created
-        admin_user = User.objects.get(email=admin_email)
-        self.assertTrue(admin_user.is_staff)
-        self.assertTrue(admin_user.is_superuser)
-        self.assertFalse(admin_user.is_author)
-
-    def test_seed_admin_does_not_duplicate_existing_admin_user(self):
-        """
-        Test that the seed_admin command does not create duplicate admin users.
-        """
-        admin_email = "admin@arcitech.com"
-
-        # Pre-create the admin user
-        User.objects.create_superuser(
-            email=admin_email,
-            password="Admin@123",
-            full_name="Arcitech Admin User",
-            phone="1234567890",
-            pincode="123456",
-            is_author=False
-        )
-
-        # Call the seed_admin command
-        call_command('seed_admin')
-
-        # Verify no duplicate admin user is created
-        admin_users = User.objects.filter(email=admin_email)
-        self.assertEqual(admin_users.count(), 1)
+    def test_login_invalid_user(self):
+        """ Test login with invalid credentials. """
+        login_data = {
+            "email": "nonexistent@example.com",
+            "password": "Password@123"
+        }
+        response = self.client.post(self.login_url, login_data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)

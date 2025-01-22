@@ -23,9 +23,9 @@ class ContentListCreateView(APIView):
 
         # Admin sees all content; authors see their own
         if request.user.is_staff:
-            contents = Content.objects.all()
+            contents = Content.objects.all().order_by('id')  # Added ordering for pagination consistency
         else:
-            contents = Content.objects.filter(author=request.user)
+            contents = Content.objects.filter(author=request.user).order_by('id')  # Added ordering
 
         # Apply search filter
         search_query = request.query_params.get('search', '')
@@ -48,10 +48,13 @@ class ContentListCreateView(APIView):
         """
         serializer = ContentSerializer(data=request.data)
         if serializer.is_valid():
+            # Validate document file type
             document = request.data.get('document')
             if document and not document.name.endswith('.pdf'):
                 return Response({"document": ["Only PDF files are allowed."]}, status=status.HTTP_400_BAD_REQUEST)
-            serializer.save(author=request.user)  # Automatically assign the logged-in user as the author
+            
+            # Assign the logged-in user as the author and save content
+            serializer.save(author=request.user)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -97,9 +100,12 @@ class ContentDetailView(APIView):
 
         serializer = ContentSerializer(content, data=request.data, partial=True)
         if serializer.is_valid():
+            # Validate document file type
             document = request.data.get('document')
             if document and not document.name.endswith('.pdf'):
                 return Response({"document": ["Only PDF files are allowed."]}, status=status.HTTP_400_BAD_REQUEST)
+            
+            # Save updates to the content item
             serializer.save()
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -111,5 +117,7 @@ class ContentDetailView(APIView):
         content = self.get_object(pk, request.user)
         if not content:
             return Response({"detail": "Not found or unauthorized."}, status=status.HTTP_404_NOT_FOUND)
+        
+        # Delete the content item
         content.delete()
         return Response({"detail": "Content deleted."}, status=status.HTTP_204_NO_CONTENT)
