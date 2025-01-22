@@ -3,3 +3,4 @@ echo "__pycache__/" >> .gitignore
 echo "*.sqlite3" >> .gitignore
 echo "htmlcov/" >> .gitignore
 echo "*.media" >> .gitignore
+echo "*db.sqlite3" >> .gitignore
