@@ -57,12 +57,12 @@ class LoginView(APIView):
         email = request.data.get('email')
         password = request.data.get('password')
 
-        print("Login Attempt:", email, password)  # Debugging
+        # print("Login Attempt:", email, password)  # Debugging
 
         try:
             # Retrieve the user by email
             user = User.objects.get(email=email)
-            print("Found User:", user.email, user.password)  # Debugging
+            #print("Found User:", user.email, user.password)  # Debugging
         except User.DoesNotExist:
             # Return an error if the user is not found
             return Response({"detail": "User not found"}, status=status.HTTP_404_NOT_FOUND)
