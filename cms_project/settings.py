@@ -152,7 +152,7 @@ REST_FRAMEWORK = {
 # Specify the custom user model
 AUTH_USER_MODEL = 'users.User'
 
-# Add this SIMPLE_JWT configuration to your settings.py
+# SIMPLE_JWT configuration
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=5),  # Access token expires in 05 minutes
     'REFRESH_TOKEN_LIFETIME': timedelta(days=1),     # Refresh token expires in 7 days
